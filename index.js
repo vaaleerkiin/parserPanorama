@@ -26,14 +26,11 @@ app.get("/scrape", async (req, res) => {
   try {
     const browser = await chromium.launch({ headless: true });
     const pageInstance = await browser.newPage();
-
-    // ШАГ 1: Получаем первую страницу
     const firstPageUrl = `${baseUrl},1.html`;
     await pageInstance.goto(firstPageUrl, { waitUntil: "networkidle" });
     const firstPageHTML = await pageInstance.content();
     const $ = cheerio.load(firstPageHTML);
 
-    // ШАГ 2: Находим количество страниц
     const pageNumbers = $("ul.pagination li a[data-paginatorpage]")
       .map((_, el) => parseInt($(el).attr("data-paginatorpage"), 10))
       .get()
@@ -43,8 +40,7 @@ app.get("/scrape", async (req, res) => {
     console.log(`📄 Всего страниц для обработки: ${maxPage}`);
 
     const jsonldElements = [];
-
-    // ШАГ 3: Перебор всех страниц
+    
     for (let i = 1; i <= maxPage; i++) {
       const url = `${baseUrl},${i}.html`;
       console.log(`➡️ Страница ${i}: загружаем ${url}`);
@@ -87,7 +83,6 @@ app.get("/scrape", async (req, res) => {
         );
       }
 
-      // задержка, чтобы не перегружать сервер
       await new Promise((r) => setTimeout(r, 300));
     }
 
