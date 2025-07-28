@@ -1,3 +1,4 @@
+const { exec } = require("child_process");
 const express = require("express");
 const { chromium } = require("playwright");
 const cheerio = require("cheerio");
@@ -61,4 +62,19 @@ app.get("/scrape", async (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`Сервер запущен на http://localhost:${PORT}`);
+
+  const url = `http://localhost:${PORT}`;
+
+  const startCmd =
+    process.platform === "win32"
+      ? `start ${url}`
+      : process.platform === "darwin"
+      ? `open ${url}`
+      : `xdg-open ${url}`;
+
+  exec(startCmd, (err) => {
+    if (err) {
+      console.error("Не удалось открыть браузер:", err);
+    }
+  });
 });
