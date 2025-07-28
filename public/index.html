@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="pl">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Scraper JSON-LD Viewer</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 2rem;
+      }
+      form {
+        margin-bottom: 2rem;
+      }
+      input,
+      select {
+        margin-right: 1rem;
+        padding: 0.5rem;
+      }
+      button {
+        padding: 0.5rem 1rem;
+      }
+      .result {
+        margin-top: 1rem;
+        padding: 1rem;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+      }
+      .field {
+        margin: 0.3rem 0;
+      }
+      .field strong {
+        display: inline-block;
+        width: 140px;
+      }
+      #copy-emails {
+        margin-left: 1rem;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>JSON-LD Business Scraper</h1>
+
+    <form id="scrape-form">
+      <label>
+        Typ:
+        <input type="text" id="type" value="motoryzacja" />
+      </label>
+      <label>
+        Область:
+        <input type="text" id="region" value="mazowieckie" />
+      </label>
+      <label>
+        Город:
+        <input type="text" id="city" value="warszawa" />
+      </label>
+      <label>
+        Страница:
+        <input type="number" id="page" value="1" min="1" />
+      </label>
+      <button type="submit">Загрузить данные</button>
+      <button type="button" id="copy-emails">Скопировать все почты</button>
+    </form>
+
+    <div id="results"></div>
+
+    <script>
+      let lastEmails = [];
+
+      document
+        .getElementById("scrape-form")
+        .addEventListener("submit", async function (e) {
+          e.preventDefault();
+
+          const type = document.getElementById("type").value.trim();
+          const region = document.getElementById("region").value.trim();
+          const city = document.getElementById("city").value.trim();
+          const page = document.getElementById("page").value.trim();
+
+          const url = `/scrape?type=${encodeURIComponent(
+            type
+          )}&region=${encodeURIComponent(region)}&city=${encodeURIComponent(
+            city
+          )}&page=${encodeURIComponent(page)}`;
+
+          const res = await fetch(url);
+          const data = await res.json();
+
+          const results = document.getElementById("results");
+          results.innerHTML = "";
+
+          if (data.length === 0) {
+            results.innerHTML = "<p>Нет данных.</p>";
+            return;
+          }
+
+          lastEmails = [];
+
+          data.forEach((item, idx) => {
+            const container = document.createElement("div");
+            container.className = "result";
+
+            for (const key in item) {
+              let value = item[key];
+              if (key === "@context" && typeof value === "string") {
+                container.innerHTML += `<div class="field"><strong>${key}:</strong> <a href="${value}" target="_blank">${value}</a></div>`;
+              } else if (typeof value === "object") {
+                container.innerHTML += `<div class="field"><strong>${key}:</strong> ${JSON.stringify(
+                  value
+                )}</div>`;
+              } else {
+                container.innerHTML += `<div class="field"><strong>${key}:</strong> ${value}</div>`;
+              }
+
+              if (key === "email" && typeof value === "string") {
+                lastEmails.push(value);
+              }
+            }
+
+            results.appendChild(container);
+          });
+        });
+
+      document.getElementById("copy-emails").addEventListener("click", () => {
+        if (lastEmails.length === 0) {
+          alert("Нет email-адресов для копирования.");
+          return;
+        }
+        const emailString = lastEmails.join(", ");
+        navigator.clipboard.writeText(emailString).then(
+          () => {
+            alert("Email-адреса скопированы.");
+          },
+          (err) => {
+            alert("Ошибка при копировании: " + err);
+          }
+        );
+      });
+    </script>
+  </body>
+</html>
