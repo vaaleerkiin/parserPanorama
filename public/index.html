@@ -2,48 +2,152 @@
 <html lang="pl">
   <head>
     <meta charset="UTF-8" />
-    <title>Scraper JSON-LD Viewer</title>
+    <title>parserPanorama</title>
     <style>
+      :root {
+        --bg-color: #121212;
+        --surface-color: #1e1e1e;
+        --text-color: #f0f0f0;
+        --accent-color: #4caf50;
+        --input-bg: #2c2c2c;
+        --border-color: #333;
+        --button-hover: #66bb6a;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
       body {
-        font-family: Arial, sans-serif;
-        margin: 2rem;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background-color: var(--bg-color);
+        color: var(--text-color);
+        margin: 0;
+        padding: 2rem;
       }
+
+      h1 {
+        text-align: center;
+        color: var(--accent-color);
+      }
+
       form {
+        background-color: var(--surface-color);
+        padding: 2rem;
+        border-radius: 10px;
         margin-bottom: 2rem;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+        max-width: 700px;
+        margin-inline: auto;
       }
-      input,
-      select {
-        margin-right: 1rem;
-        padding: 0.5rem;
+
+      label {
+        display: block;
+        margin-bottom: 1rem;
       }
+
+      input {
+        width: calc(100% - 12px);
+        padding: 0.6rem;
+        border: 1px solid var(--border-color);
+        border-radius: 5px;
+        background-color: var(--input-bg);
+        color: var(--text-color);
+      }
+
       button {
-        padding: 0.5rem 1rem;
+        background-color: var(--accent-color);
+        color: #fff;
+        border: none;
+        padding: 0.6rem 1.2rem;
+        border-radius: 5px;
+        cursor: pointer;
+        font-weight: bold;
+        transition: background-color 0.2s ease;
         margin-top: 0.5rem;
       }
-      .result {
-        margin-top: 1rem;
-        padding: 1rem;
-        border: 1px solid #ccc;
-        border-radius: 5px;
+
+      button:hover {
+        background-color: var(--button-hover);
       }
+
+      .copy-buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        margin-top: 1rem;
+      }
+
+      #loader {
+        font-weight: bold;
+        font-size: 1.2rem;
+        color: #fff;
+        background-color: #2b2b2b;
+        padding: 1rem 2rem;
+
+        border-radius: 8px;
+        width: fit-content;
+        margin: 2rem auto;
+        text-align: center;
+        display: none;
+        background-color: var(--surface-color);
+        padding: 1.2rem;
+
+        border-radius: 8px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+      }
+
+      #results {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        max-width: 800px;
+        margin: auto;
+      }
+      #log-output {
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+      }
+
+      .result {
+        background-color: var(--surface-color);
+        padding: 1.2rem;
+
+        border-radius: 8px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+      }
+
       .field {
         margin: 0.3rem 0;
       }
+
       .field strong {
         display: inline-block;
         width: 140px;
+        color: var(--accent-color);
       }
-      .copy-buttons {
-        margin-top: 1rem;
+
+      @media (max-width: 600px) {
+        input {
+          width: 100%;
+        }
+
+        .field strong {
+          width: 100%;
+          display: block;
+        }
+
+        .copy-buttons {
+          flex-direction: column;
+        }
       }
     </style>
   </head>
   <body>
-    <h1>JSON-LD Business Scraper</h1>
+    <h1>ILoveYouPanorama&lt;3</h1>
 
     <form id="scrape-form">
       <label>
-        Typ:
+        Тип:
         <input type="text" id="type" value="motoryzacja" />
       </label>
       <label>
@@ -59,23 +163,60 @@
 
       <div class="copy-buttons">
         <button type="button" id="copy-emails">
-          Скопировать все почты (строкой)
+          Скопировать почты (строкой)
         </button>
         <button type="button" id="copy-emails-vertical">
-          Скопировать для Google Таблиц (в столбик)
+          Скопировать почты (в столбик)</button
+        ><button type="button" id="copy-structured">
+          Скопировать всё (в столбик)
         </button>
       </div>
     </form>
+
+    <div id="loader">🔄 Загрузка данных, подождите...</div>
 
     <div id="results"></div>
 
     <script>
       let lastEmails = [];
+      let lastStructured = [];
+
+      const loader = document.getElementById("loader");
+      const logOutput = document.createElement("div");
+      logOutput.id = "log-output";
+      logOutput.style.whiteSpace = "pre-line";
+      logOutput.style.marginTop = "1rem";
+      logOutput.style.marginBottom = "1rem";
+      logOutput.style.padding = "1rem";
+      logOutput.style.background = "#1e1e1e";
+      logOutput.style.borderRadius = "8px";
+      logOutput.style.maxHeight = "300px";
+      logOutput.style.overflowY = "auto";
+      logOutput.style.maxWidth = "800px";
+      logOutput.style.marginInline = "auto";
+      document.body.insertBefore(logOutput, document.getElementById("results"));
+
+      const socket = new WebSocket(`ws://${location.host}`);
+
+      socket.addEventListener("message", (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === "status") {
+            logOutput.textContent += data.message + "\n";
+            logOutput.scrollTop = logOutput.scrollHeight;
+          }
+        } catch (err) {
+          console.warn("Ошибка обработки WebSocket-сообщения", err);
+        }
+      });
 
       document
         .getElementById("scrape-form")
         .addEventListener("submit", async function (e) {
           e.preventDefault();
+
+          loader.style.display = "block";
+          logOutput.textContent = ""; // очистка
 
           const type = document.getElementById("type").value.trim();
           const region = document.getElementById("region").value.trim();
@@ -87,34 +228,47 @@
             city
           )}`;
 
-          const res = await fetch(url);
-          const data = await res.json();
+          try {
+            const res = await fetch(url);
+            const data = await res.json();
 
-          const results = document.getElementById("results");
-          results.innerHTML = "";
+            const results = document.getElementById("results");
+            results.innerHTML = "";
 
-          if (data.length === 0) {
-            results.innerHTML = "<p>Нет данных.</p>";
-            return;
-          }
-
-          lastEmails = [];
-
-          data.forEach((item, idx) => {
-            const container = document.createElement("div");
-            container.className = "result";
-
-            for (const key in item) {
-              const value = item[key];
-              container.innerHTML += `<div class="field"><strong>${key}:</strong> ${value}</div>`;
-
-              if (key === "email" && typeof value === "string") {
-                lastEmails.push(value);
-              }
+            if (data.length === 0) {
+              results.innerHTML = "<p>Нет данных.</p>";
+              return;
             }
 
-            results.appendChild(container);
-          });
+            lastEmails = [];
+
+            data.forEach((item) => {
+              const container = document.createElement("div");
+              container.className = "result";
+
+              for (const key in item) {
+                const value = item[key];
+                container.innerHTML += `<div class="field"><strong>${key}:</strong> ${value}</div>`;
+                if (key === "email" && typeof value === "string") {
+                  lastEmails.push(value);
+                }
+              }
+              lastStructured.push({
+                name: item["name"] || "",
+                contact: item["contact"] || "",
+                email: item["email"] || "",
+                phone: item["phone"] || "",
+                website: item["www"] || "",
+                address: item["address"] || "",
+              });
+
+              results.appendChild(container);
+            });
+          } catch (error) {
+            alert("Произошла ошибка при загрузке данных.");
+          } finally {
+            loader.style.display = "none";
+          }
         });
 
       document.getElementById("copy-emails").addEventListener("click", () => {
@@ -140,13 +294,43 @@
             alert("Нет email-адресов для копирования.");
             return;
           }
-          const emailColumn = lastEmails.join("\n"); // каждый email на новой строке
+          const emailColumn = lastEmails.join("\n");
           navigator.clipboard.writeText(emailColumn).then(
             () => {
               alert("Email-адреса скопированы для вставки в Google Таблицы.");
             },
             (err) => {
               alert("Ошибка при копировании: " + err);
+            }
+          );
+        });
+
+      document
+        .getElementById("copy-structured")
+        .addEventListener("click", () => {
+          if (!lastStructured || lastStructured.length === 0) {
+            alert("Немає даних для копіювання.");
+            return;
+          }
+
+          const rows = lastStructured.map((item) => {
+            const row = [
+              item["name"] || "",
+              item["contact"] || "",
+              item["email"] || "",
+              item["phone"] || "",
+              item["website"] || "",
+              item["address"] || "",
+            ];
+            return row.join("\t");
+          });
+
+          navigator.clipboard.writeText(rows.join("\n")).then(
+            () => {
+              alert("Дані скопійовано структуровано для Google Таблиць.");
+            },
+            (err) => {
+              alert("Помилка при копіюванні: " + err);
             }
           );
         });
