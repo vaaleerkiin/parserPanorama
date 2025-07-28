@@ -4,6 +4,7 @@
   "main": "index.js",
   "scripts": {
     "id": "npm install && npx playwright install",
+    "dev": "node --watch index.js",
     "start": "node index.js"
   },
   "repository": {

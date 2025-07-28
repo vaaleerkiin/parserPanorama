@@ -1,4 +1,5 @@
 const { exec } = require("child_process");
+
 const express = require("express");
 const { chromium } = require("playwright");
 const cheerio = require("cheerio");
@@ -18,45 +19,87 @@ app.get("/scrape", async (req, res) => {
     type = "motoryzacja",
     region = "mazowieckie",
     city = "warszawa",
-    page = 1,
   } = req.query;
 
-  const url = `https://panoramafirm.pl/${type}/${region},,${city}/firmy,${page}.html`;
+  const baseUrl = `https://panoramafirm.pl/${type}/${region},,${city}/firmy`;
 
   try {
     const browser = await chromium.launch({ headless: true });
     const pageInstance = await browser.newPage();
-    await pageInstance.goto(url, { waitUntil: "networkidle" });
 
-    const html = await pageInstance.content();
-    await browser.close();
+    // ШАГ 1: Получаем первую страницу
+    const firstPageUrl = `${baseUrl},1.html`;
+    await pageInstance.goto(firstPageUrl, { waitUntil: "networkidle" });
+    const firstPageHTML = await pageInstance.content();
+    const $ = cheerio.load(firstPageHTML);
 
-    const $ = cheerio.load(html);
+    // ШАГ 2: Находим количество страниц
+    const pageNumbers = $("ul.pagination li a[data-paginatorpage]")
+      .map((_, el) => parseInt($(el).attr("data-paginatorpage"), 10))
+      .get()
+      .filter((n) => !isNaN(n));
+
+    const maxPage = Math.max(...pageNumbers, 1);
+    console.log(`📄 Всего страниц для обработки: ${maxPage}`);
+
     const jsonldElements = [];
 
-    $('script[type="application/ld+json"]').each((i, el) => {
-      try {
-        const raw = $(el).html();
-        const parsed = JSON.parse(raw);
+    // ШАГ 3: Перебор всех страниц
+    for (let i = 1; i <= maxPage; i++) {
+      const url = `${baseUrl},${i}.html`;
+      console.log(`➡️ Страница ${i}: загружаем ${url}`);
 
-        if (Array.isArray(parsed)) {
-          parsed.forEach((item) => {
-            if (item["@type"] === "LocalBusiness") {
-              jsonldElements.push(item);
+      try {
+        await pageInstance.goto(url, { waitUntil: "networkidle" });
+        const html = await pageInstance.content();
+        const $$ = cheerio.load(html);
+
+        let countOnPage = 0;
+
+        $$('script[type="application/ld+json"]').each((_, el) => {
+          try {
+            const raw = $$(el).html();
+            const parsed = JSON.parse(raw);
+
+            if (Array.isArray(parsed)) {
+              parsed.forEach((item) => {
+                if (item["@type"] === "LocalBusiness") {
+                  jsonldElements.push(item);
+                  countOnPage++;
+                }
+              });
+            } else if (parsed["@type"] === "LocalBusiness") {
+              jsonldElements.push(parsed);
+              countOnPage++;
             }
-          });
-        } else if (parsed["@type"] === "LocalBusiness") {
-          jsonldElements.push(parsed);
-        }
-      } catch (e) {
-        console.warn(`Ошибка парсинга JSON-LD в элементе #${i}:`, e.message);
+          } catch (e) {
+            console.warn(
+              `⚠️ JSON-LD ошибка парсинга на стр. ${i}: ${e.message}`
+            );
+          }
+        });
+
+        console.log(`✅ Страница ${i}: получено ${countOnPage} компаний`);
+      } catch (pageError) {
+        console.error(
+          `❌ Ошибка при обработке страницы ${i}:`,
+          pageError.message
+        );
       }
-    });
+
+      // задержка, чтобы не перегружать сервер
+      await new Promise((r) => setTimeout(r, 300));
+    }
+
+    await browser.close();
+    console.log(
+      `🏁 Завершено! Всего компаний собрано: ${jsonldElements.length}`
+    );
 
     res.json(jsonldElements);
   } catch (error) {
-    console.error("Ошибка при обработке запроса:", error);
-    res.status(500).json({ error: "Ошибка при парсинге страницы." });
+    console.error("🚨 Общая ошибка при обработке запроса:", error.message);
+    res.status(500).json({ error: "Ошибка при парсинге страниц." });
   }
 });
 
@@ -65,16 +108,16 @@ app.listen(PORT, () => {
 
   const url = `http://localhost:${PORT}`;
 
-  const startCmd =
-    process.platform === "win32"
-      ? `start ${url}`
-      : process.platform === "darwin"
-      ? `open ${url}`
-      : `xdg-open ${url}`;
+  //   const startCmd =
+  //     process.platform === "win32"
+  //       ? `start ${url}`
+  //       : process.platform === "darwin"
+  //       ? `open ${url}`
+  //       : `xdg-open ${url}`;
 
-  exec(startCmd, (err) => {
-    if (err) {
-      console.error("Не удалось открыть браузер:", err);
-    }
-  });
+  //   exec(startCmd, (err) => {
+  //     if (err) {
+  //       console.error("Не удалось открыть браузер:", err);
+  //     }
+  //   });
 });

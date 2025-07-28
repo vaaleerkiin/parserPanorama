@@ -18,6 +18,7 @@
       }
       button {
         padding: 0.5rem 1rem;
+        margin-top: 0.5rem;
       }
       .result {
         margin-top: 1rem;
@@ -32,8 +33,8 @@
         display: inline-block;
         width: 140px;
       }
-      #copy-emails {
-        margin-left: 1rem;
+      .copy-buttons {
+        margin-top: 1rem;
       }
     </style>
   </head>
@@ -53,12 +54,17 @@
         Город:
         <input type="text" id="city" value="warszawa" />
       </label>
-      <label>
-        Страница:
-        <input type="number" id="page" value="1" min="1" />
-      </label>
+
       <button type="submit">Загрузить данные</button>
-      <button type="button" id="copy-emails">Скопировать все почты</button>
+
+      <div class="copy-buttons">
+        <button type="button" id="copy-emails">
+          Скопировать все почты (строкой)
+        </button>
+        <button type="button" id="copy-emails-vertical">
+          Скопировать для Google Таблиц (в столбик)
+        </button>
+      </div>
     </form>
 
     <div id="results"></div>
@@ -74,13 +80,12 @@
           const type = document.getElementById("type").value.trim();
           const region = document.getElementById("region").value.trim();
           const city = document.getElementById("city").value.trim();
-          const page = document.getElementById("page").value.trim();
 
           const url = `/scrape?type=${encodeURIComponent(
             type
           )}&region=${encodeURIComponent(region)}&city=${encodeURIComponent(
             city
-          )}&page=${encodeURIComponent(page)}`;
+          )}`;
 
           const res = await fetch(url);
           const data = await res.json();
@@ -100,16 +105,8 @@
             container.className = "result";
 
             for (const key in item) {
-              let value = item[key];
-              if (key === "@context" && typeof value === "string") {
-                container.innerHTML += `<div class="field"><strong>${key}:</strong> <a href="${value}" target="_blank">${value}</a></div>`;
-              } else if (typeof value === "object") {
-                container.innerHTML += `<div class="field"><strong>${key}:</strong> ${JSON.stringify(
-                  value
-                )}</div>`;
-              } else {
-                container.innerHTML += `<div class="field"><strong>${key}:</strong> ${value}</div>`;
-              }
+              const value = item[key];
+              container.innerHTML += `<div class="field"><strong>${key}:</strong> ${value}</div>`;
 
               if (key === "email" && typeof value === "string") {
                 lastEmails.push(value);
@@ -128,13 +125,31 @@
         const emailString = lastEmails.join(", ");
         navigator.clipboard.writeText(emailString).then(
           () => {
-            alert("Email-адреса скопированы.");
+            alert("Email-адреса скопированы строкой.");
           },
           (err) => {
             alert("Ошибка при копировании: " + err);
           }
         );
       });
+
+      document
+        .getElementById("copy-emails-vertical")
+        .addEventListener("click", () => {
+          if (lastEmails.length === 0) {
+            alert("Нет email-адресов для копирования.");
+            return;
+          }
+          const emailColumn = lastEmails.join("\n"); // каждый email на новой строке
+          navigator.clipboard.writeText(emailColumn).then(
+            () => {
+              alert("Email-адреса скопированы для вставки в Google Таблицы.");
+            },
+            (err) => {
+              alert("Ошибка при копировании: " + err);
+            }
+          );
+        });
     </script>
   </body>
 </html>
