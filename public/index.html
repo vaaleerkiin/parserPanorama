@@ -17,7 +17,19 @@
       * {
         box-sizing: border-box;
       }
+      *::-webkit-scrollbar {
+        width: 10px;
+      }
 
+      *::-webkit-scrollbar-track {
+        background: var(--bg-color);
+      }
+
+      *::-webkit-scrollbar-thumb {
+        background-color: var(--accent-color);
+        border-radius: 10px;
+        border: 2px solid var(--bg-color);
+      }
       body {
         font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
         background-color: var(--bg-color);
@@ -190,7 +202,7 @@
       logOutput.style.padding = "1rem";
       logOutput.style.background = "#1e1e1e";
       logOutput.style.borderRadius = "8px";
-      logOutput.style.maxHeight = "300px";
+      logOutput.style.maxHeight = "160px";
       logOutput.style.overflowY = "auto";
       logOutput.style.maxWidth = "800px";
       logOutput.style.marginInline = "auto";
