@@ -160,7 +160,7 @@
     <form id="scrape-form">
       <label>
         Тип:
-        <input type="text" id="type" value="motoryzacja" />
+        <input type="text" id="type" value="kawiarnia" />
       </label>
       <label>
         Область:
@@ -272,6 +272,8 @@
                 phone: item["phone"] || "",
                 website: item["www"] || "",
                 address: item["address"] || "",
+                stars: item["stars"] || "",
+                reviews: item["reviews"] || "",
               });
 
               results.appendChild(container);
@@ -333,6 +335,12 @@
               item["phone"] || "",
               item["website"] || "",
               item["address"] || "",
+              `${item["stars"] ? item["stars"] : 0} stars` || "",
+              `${item["reviews"] ? item["reviews"] : 0} reviews` || "",
+              `${Math.round(
+                (item["stars"] ? item["stars"] : 1) *
+                  (item["reviews"] ? item["reviews"] : 1)
+              )} raiting` || "",
             ];
             return row.join("\t");
           });
