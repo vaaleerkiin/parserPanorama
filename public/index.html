@@ -327,23 +327,31 @@
             return;
           }
 
-          const rows = lastStructured.map((item) => {
-            const row = [
-              item["name"] || "",
-              item["contact"] || "",
-              item["email"] || "",
-              item["phone"] || "",
-              item["website"] || "",
-              item["address"] || "",
-              `${item["stars"] ? item["stars"] : 0} stars` || "",
-              `${item["reviews"] ? item["reviews"] : 0} reviews` || "",
-              `${Math.round(
-                (item["stars"] ? item["stars"] : 1) *
-                  (item["reviews"] ? item["reviews"] : 1)
-              )} raiting` || "",
-            ];
-            return row.join("\t");
-          });
+          const rows = lastStructured
+            .sort(
+              (a, b) =>
+                (b["stars"] ? b["stars"] : 1) *
+                  (b["reviews"] ? b["reviews"] : 1) -
+                (a["stars"] ? a["stars"] : 1) *
+                  (a["reviews"] ? a["reviews"] : 1)
+            )
+            .map((item) => {
+              const row = [
+                item["name"] || "",
+                item["contact"] || "",
+                item["email"] || "",
+                item["phone"] || "",
+                item["website"] || "",
+                item["address"] || "",
+                `${item["stars"] ? item["stars"] : 0} stars` || "",
+                `${item["reviews"] ? item["reviews"] : 0} reviews` || "",
+                `${Math.round(
+                  (item["stars"] ? item["stars"] : 1) *
+                    (item["reviews"] ? item["reviews"] : 1)
+                )} raiting` || "",
+              ];
+              return row.join("\t");
+            });
 
           navigator.clipboard.writeText(rows.join("\n")).then(
             () => {
