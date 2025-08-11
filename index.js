@@ -174,7 +174,7 @@ app.get("/scrape", async (req, res) => {
         sendStatus(`❌ Ошибка на странице ${i}: ${err.message}`);
       }
 
-      await new Promise((r) => setTimeout(r, 300));
+      await new Promise((r) => setTimeout(r, 100));
       console.log(`⏲️ Пауза 300 мс после страницы ${i}`);
     }
 
